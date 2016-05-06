@@ -1,195 +1,212 @@
-
-
 <!DOCTYPE html>
+
 <html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-        <title>Bouncing Ball</title>
-        <style type="text/css">
-            body {
-            	text-align: center;
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Bouncing Ball</title>
+    <style type="text/css">
+        body {
+            text-align: center;
+        }
+        
+        #canvas {
+            position: relative;
+            background-color: #ccddcc;
+            margin: 1em auto;
+        }
+        
+        .ball {
+            position: absolute;
+            display: inline-block;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="canvas" onclick="createBall(event)"></div>
+
+    <label for="speed">Speed</label>
+    <input type="range" name="speed" min="1" max="10" step="1" value="1" oninput="canvas.updateSpeed(this.value)" onchange="canvas.updateSpeed(this.value)"></input>
+
+    <input type="button" id="pausebtn" onclick="canvas.stopOrStartAllBalls(this)" value="Stop All"></input>
+
+    <p id="collisionCounter"></p>
+
+    <script type="text/javascript">
+        const ballWidth = 40;
+        const ballHeight = 40;
+        var $counter = document.getElementById('collisionCounter');
+
+        var canvas = {
+            element: document.getElementById('canvas'),
+            width: 500,
+            height: 500,
+            balls: [],
+            speed: 1,
+            paused: false,
+            collisionCounter: 0,
+
+            initialize: function() {
+                this.element.style.width = this.width + 'px';
+                this.element.style.height = this.height + 'px';
+                document.body.appendChild(this.element);
+
+                setInterval(function() {
+                    canvas.collisionCounter = 0;
+                    $counter.innerHTML = canvas.collisionCounter + " collisions in last 1 second.";
+                }, 1000);
+            },
+
+            stopOrStartAllBalls: function(btn) {
+                if (this.paused) {
+                    this.startAllBalls();
+                    this.paused = false;
+                    btn.value = 'Stop All';
+                } else {
+                    this.stopAllBalls();
+                    this.paused = true;
+                    btn.value = 'Start All';
+                }
+            },
+
+            stopAllBalls: function() {
+                var numBalls = this.balls.length;
+                for (var i = 0; i < numBalls; i++) {
+                    var ball = this.balls[i];
+                    ball.stop();
+                }
+
+                this.paused = true;
+            },
+
+            startAllBalls: function() {
+                var numBalls = this.balls.length;
+                for (var i = 0; i < numBalls; i++) {
+                    var ball = this.balls[i];
+                    ball.start();
+                    ball.draw();
+                }
+
+                this.paused = false;
+            },
+
+            updateSpeed: function(speed) {
+                canvas.speed = speed;
             }
-            #canvas {
-	            position: relative;
-	            background-color: #ccddcc;
-	            margin: 1em auto;
+        };
+
+        var Ball = {
+            moving: true,
+            timeVar: false,
+            create: function(color, dx, dy, x, y) {
+                var newBall = Object.create(this);
+                newBall.dx = dx;
+                newBall.dy = dy;
+                newBall.x = x;
+                newBall.y = y;
+                newBall.width = ballWidth;
+                newBall.height = ballHeight;
+                newBall.element = document.createElement('div');
+                newBall.element.style.backgroundColor = color;
+                newBall.element.style.width = newBall.width + 'px';
+                newBall.element.style.height = newBall.height + 'px';
+                newBall.element.className += ' ball';
+                newBall.width = parseInt(newBall.element.style.width);
+                newBall.height = parseInt(newBall.element.style.height);
+                canvas.element.appendChild(newBall.element);
+
+                return newBall;
+            },
+
+            moveTo: function(x, y) {
+                this.element.style.left = x + 'px';
+                this.element.style.top = y + 'px';
+            },
+
+            stop: function() {
+                this.moving = false;
+            },
+
+            start: function() {
+                this.moving = true;
+                if (this.timeVar) {
+                    clearTimeout(this.timeVar);
+                }
+            },
+
+            changeDirectionIfNecessary: function(x, y) {
+                var collision = false;
+                if (x < 0 || x > canvas.width - this.width) {
+                    this.dx = -this.dx;
+
+                    collision = true;
+                }
+                if (y < 0 || y > canvas.height - this.height) {
+                    this.dy = -this.dy;
+
+                    collision = true;
+                }
+
+                if (collision) {
+                    canvas.collisionCounter++;
+                    $counter.innerHTML = canvas.collisionCounter + " collisions in last 1 second.";
+                }
+            },
+
+            draw: function() {
+                if (this.moving) {
+                    var ball = this;
+                    this.moveTo(ball.x, ball.y);
+                    this.timeVar = setTimeout(function() {
+                        ball.changeDirectionIfNecessary(ball.x, ball.y);
+                        ball.x = ball.x + ball.dx;
+                        ball.y = ball.y + ball.dy;
+                        ball.draw();
+                    }, 1000 / (60 * canvas.speed));
+                }
             }
-            .ball {
-	            position: absolute;
-	            display: inline-block;
-	            border-radius: 50%;
-            }
-        </style>
-    </head>
-    <body>
+        };
 
-        <div id="canvas" onclick="createBall(event)"></div>
+        canvas.initialize();
 
-        <label for="speed">Speed</label>
-    	<input type="range" name="speed" min="1" max="10" step="1" value="1" 
-   oninput="canvas.updateSpeed(this.value)" onchange="canvas.updateSpeed(this.value)"></input>
-    	
-    	<input type="button" id="pausebtn" onclick="canvas.stopOrStartAllBalls(this)" value="Stop All"></input>
+        function createBall(event) {
+            const cx = event.pageX;
+            const cy = event.pageY;
+            var x = Math.abs(cx - canvas.element.offsetLeft) - (ballWidth / 2);
+            var y = Math.abs(cy - canvas.element.offsetTop) - (ballHeight / 2);
 
-    	<p id="collisionCounter"></p>
-
-        <script type="text/javascript">
-        	const ballWidth = 40;
-        	const ballHeight = 40;
-        	var $counter = document.getElementById('collisionCounter');
-
-            var canvas = {
-	            element: document.getElementById('canvas'),
-	            width: 600,
-	            height: 600,
-	            balls: [],
-	            speed: 1,
-	            paused: false,
-	            collisionCounter: 0,
-
-	            initialize: function () {
-		            this.element.style.width = this.width + 'px';
-		            this.element.style.height = this.height + 'px';
-		            document.body.appendChild(this.element);
-
-		            setInterval(function () {
-            			canvas.collisionCounter = 0;
-            			$counter.innerHTML = canvas.collisionCounter + " collisions in last 1 second.";
-		            }, 1000);
-	            },
-
-	            stopOrStartAllBalls: function (btn) {
-	            	if (this.paused) {
-	            		this.startAllBalls();
-	            		this.paused = false;
-	            		btn.value = 'Stop All';
-	            	} else {
-	            		this.stopAllBalls();
-	            		this.paused = true;
-	            		btn.value = 'Start All';
-	            	}
-	            },
-
-	            stopAllBalls: function () {
-	            	var numBalls = this.balls.length;
-					for (var i = 0; i < numBalls; i++) {
-					    var ball = this.balls[i];
-					    ball.stop();
-					}
-
-					this.paused = true;
-	            },
-
-	            startAllBalls: function () {
-	            	var numBalls = this.balls.length;
-					for (var i = 0; i < numBalls; i++) {
-					    var ball = this.balls[i];
-					    ball.start();
-					    ball.draw();
-					}
-
-					this.paused = false;
-	            },
-
-	            updateSpeed: function (speed) {
-					canvas.speed = speed;
-				}
-            };
-            
-            var Ball = {
-            	moving: true,
-            	timeVar: false,
-	            create: function (color, dx, dy, x, y) {
-		            var newBall = Object.create(this);
-		            newBall.dx = dx;
-		            newBall.dy = dy;
-		            newBall.x = x;
-		            newBall.y = y;
-		            newBall.width = ballWidth;
-		            newBall.height = ballHeight;
-		            newBall.element = document.createElement('div');
-		            newBall.element.style.backgroundColor = color;
-		            newBall.element.style.width = newBall.width + 'px';
-		            newBall.element.style.height = newBall.height + 'px';
-		            newBall.element.className += ' ball';
-		            newBall.width = parseInt(newBall.element.style.width);
-		            newBall.height = parseInt(newBall.element.style.height);
-		            canvas.element.appendChild(newBall.element);
-
-		            return newBall;
-	            },
-
-	            moveTo: function (x, y) {
-	            	this.element.style.left = x + 'px';
-	            	this.element.style.top = y + 'px';
-	            },
-
-	            stop: function () {
-	            	this.moving = false;
-	            },
-
-	            start: function() {
-	            	this.moving = true;
-	            	if (this.timeVar) {
-	            		clearTimeout(this.timeVar);
-	            	}
-	            },
-
-	            changeDirectionIfNecessary: function (x, y) {
-	            	var collision = false;
-	            	if (x < 0 || x > canvas.width - this.width) {
-	            		this.dx = -this.dx;
-
-	            		collision = true;
-	            	}
-	            	if (y < 0 || y > canvas.height - this.height) {
-	            		this.dy = -this.dy;
-						
-						collision = true;
-	            	}
-
-	            	if (collision) {
-	            		canvas.collisionCounter++;
-	            		$counter.innerHTML = canvas.collisionCounter + " collisions in last 1 second.";
-	            	}
-	            },
-
-	            draw: function () {
-	            	if (this.moving) {
-	            		var ball = this;
-	            		this.moveTo(ball.x, ball.y);
-			            this.timeVar = setTimeout(function () {
-			            	ball.changeDirectionIfNecessary(ball.x, ball.y);
-			            	ball.x = ball.x + ball.dx;
-			            	ball.y = ball.y + ball.dy;
-			            	ball.draw();
-			            }, 1000 / (60 * canvas.speed));
-	            	}
-	            }
-            };
-            
-            canvas.initialize();
-
-            function createBall(event) {
-            	const cx = event.clientX;
-            	const cy = event.clientY;
-            	const x = Math.abs(cx - canvas.width) + ballWidth;
-            	const y = Math.abs(cy - canvas.height) + ballHeight;
-
-            	var ball =  Ball.create(getRandomColor(), 4, 3, y, x);
-            	ball.start();
-            	ball.draw();
-            	canvas.balls.push(ball);
+            if (x < canvas.width) {
+                x += ballWidth / 2;
             }
 
-            function getRandomColor() {
-			    var letters = '0123456789ABCDEF'.split('');
-			    var color = '#';
-			    for (var i = 0; i < 6; i++ ) {
-			        color += letters[Math.floor(Math.random() * 16)];
-			    }
-			    return color;
-			}
-        </script>
-    </body>
+            if (y < canvas.height) {
+                y += ballHeight / 2;
+            }
+
+            var ball = Ball.create(getRandomColor(), getRandomArbitary(4, -4), getRandomArbitary(4, -4), x, y);
+
+            ball.start();
+            ball.draw();
+            canvas.balls.push(ball);
+        }
+
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF'.split('');
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+
+        }
+
+        function getRandomArbitary(max, min) {
+            return Math.random() * (max - min) + min;
+        }
+    </script>
+</body>
+
 </html>
