@@ -185,9 +185,11 @@
             if (y < canvas.height) {
                 y += ballHeight / 2;
             }
-
-            var ball = Ball.create(getRandomColor(), getRandomArbitary(4, -4), getRandomArbitary(4, -4), x, y);
-
+            
+            var angle = Math.floor(Math.random() * 2 * Math.PI);
+            var ax = (ballWidth/2 * Math.cos(angle));
+            var ay = (ballWidth/2 * Math.sin(angle));
+            var ball = Ball.create(getRandomColor(), ax, ay, x, y);
             ball.start();
             ball.draw();
             canvas.balls.push(ball);
